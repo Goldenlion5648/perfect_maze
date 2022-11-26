@@ -3,7 +3,9 @@
 This program generates a perfect maze (a maze each point has exactly one path to it).
 
 # Preview
-As an added bonus, a gif is generated showing the process that was taken to generate the maze.
+As an added bonus, a gif is generated showing the process that was taken to generate the maze. The red dot at the end of the gif is the goal point of the maze. It is the farthest point from the start.
+
+# Running the Program
 
 This program was made for python 3.10 or later on windows. Seeing as the gif generated can be quite large, if you are on Linux and have `gifsicle` installed, you can use this command to optimize the gif:
 
