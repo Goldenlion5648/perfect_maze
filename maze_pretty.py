@@ -19,17 +19,18 @@ dfs_seen = set()
 
 
 def make_image_from_state(board, making_gif, final=False):
-    global state_number, dim, output_dir
+    global state_number, dim, y_dim, output_dir
     if not making_gif:
         return
-    canvas_size = dim * 4
-    tile_size = canvas_size // dim
-    im = Image.new(mode="RGB", size=(canvas_size, canvas_size))
+    canvas_size = dim * 4, y_dim * 4
+    tile_size_x = canvas_size[0] // dim
+    tile_size_y = canvas_size[1] // y_dim
+    im = Image.new(mode="RGB", size=canvas_size)
     draw = ImageDraw.Draw(im)
-    for y in range(dim):
+    for y in range(y_dim):
         for x in range(dim):
-            cur_x = x*tile_size
-            cur_y = y*tile_size
+            cur_x = x*tile_size_x
+            cur_y = y*tile_size_y
             color = (0, 0, 0)
             match board[y][x]:
                 case ".":
@@ -42,8 +43,8 @@ def make_image_from_state(board, making_gif, final=False):
                     color = (255, 20, 20)
                 case "@":
                     color = (0, 230, 0)
-            draw.rectangle([cur_x, cur_y, cur_x+tile_size,
-                           cur_y+tile_size], fill=color)
+            draw.rectangle([cur_x, cur_y, cur_x+tile_size_x,
+                           cur_y+tile_size_y], fill=color)
     ending = str(state_number).rjust(4, "0")
     im.save(f"{output_dir}/frame{ending}.png", "PNG")
 
@@ -65,7 +66,7 @@ def show_board(board, fix=False):
 
 
 def clean_board(board):
-    for y in range(dim):
+    for y in range(y_dim):
         board[y] = [WALL if x == WALL else OPEN for x in board[y]]
 
 
@@ -85,7 +86,7 @@ def dfs(board, y, x, making_gif):
     for dy, dx in new_adj:
         new_y = dy + y
         new_x = dx + x
-        if new_y in range(dim) and new_x in range(dim):
+        if new_y in range(y_dim) and new_x in range(dim):
             if board[new_y][new_x] != OPEN:
                 continue
             if new_y % 2 == 0 and new_x % 2 == 0:
@@ -115,7 +116,7 @@ def dfs(board, y, x, making_gif):
 def place_walls(board):
     board[0] = list(WALL * dim)
     board[-1] = list(WALL * dim)
-    for y in range(dim):
+    for y in range(y_dim):
         board[y][0] = WALL
         board[y][-1] = WALL
     board[start_y][start_x] = OPEN
@@ -136,32 +137,31 @@ def bfs(board):
         for dy, dx in adj:
             new_y = dy + y
             new_x = dx + x
-            if new_y in range(dim) and new_x in range(dim) and board[new_y][new_x] == OPEN:
+            if new_y in range(y_dim) and new_x in range(dim) and board[new_y][new_x] == OPEN:
                 fringe.append(((new_y, new_x), steps + 1))
     ret, _ = seen.popitem(True)
     return ret
 
 
 def count_branches(board):
-    return sum(board[y][x] == OPEN and sum(board[y + dy][x + dx] == OPEN for dy, dx in adj) >= 3 for y, x in it.product(range(1, dim - 1), range(1, dim - 1)))
+    return sum(board[y][x] == OPEN and sum(board[y + dy][x + dx] == OPEN for dy, dx in adj) >= 3 for y, x in it.product(range(1, y_dim - 1), range(1, dim - 1)))
 
 
-def make_gif(making_gif):
+def make_gif(making_gif, output_file="combined.gif"):
     global output_dir
     if not making_gif:
         return
     images = [iio.imread(f"{output_dir}/{x}")
               for x in sorted(os.listdir(output_dir)) if "frame" in x]
     images.extend(images[-1] for _ in range(100))
-    final_gif = "combined.gif"
-    iio.mimsave(final_gif, images, format="GIF", duration=.001)
+    iio.mimsave(output_file, images, format="GIF", duration=.001)
 
 
 def initialize_board():
     global dim, show_printout
     sys.setrecursionlimit(5000)
     # random.seed(5)
-    return [list(OPEN*dim) for _ in range(dim)]
+    return [list(OPEN*dim) for _ in range(y_dim)]
 
 def reveal_start_and_end_positions(board):
     global start_x, start_y
@@ -179,13 +179,14 @@ def output_setup(making_gif, output_directory="./images"):
     os.mkdir(output_dir)
 
 def main(args):
-    global state_number, start_x, start_y, dim, show_printout
+    global state_number, start_x, start_y, dim, y_dim,  show_printout
     
 
     start_x, start_y = (1, 0)
     state_number = 0
     dim = 21
     dim = args.dim
+    y_dim = args.y_dim if args.y_dim is not None else dim
     show_printout = args.print
     making_gif = args.noGif
 
@@ -196,13 +197,17 @@ def main(args):
     reveal_start_and_end_positions(board)
     show_board(board, True)
     make_image_from_state(board, making_gif, True)
-    make_gif(making_gif)
+    if not args.output.endswith(".gif"):
+        args.output += ".gif"
+    make_gif(making_gif, args.output)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generates a perfect maze")
-    parser.add_argument("-d", "--dim", help="The maze generated will be of size DIM by DIM", default=11, type=int)
+    parser.add_argument("-d", "--dim", help="The maze generated will be of size DIM by DIM (both should be odd)", default=11, type=int)
+    parser.add_argument("-y", "--y_dim", help="Overrides the y dimension with this value", default=None, type=int)
     parser.add_argument("-p", "--print", help="Print every step of the generation to the console" ,action="store_true")
+    parser.add_argument("-o", "--output", help="File name for the final gif", default="combined.gif")
     parser.add_argument("-n", "--noGif", help="Should the gif be left out? (The final result will only be printed to the console)", action="store_false")
     args = parser.parse_args()
     main(args)
