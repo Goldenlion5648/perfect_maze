@@ -15,9 +15,7 @@ WALL = "#"
 
 
 def make_image_from_state(board, final=False):
-    global round_, dim
-    # print(round_)
-    # print("making image")
+    global state_number, dim, output_dir
     canvas_size = dim * 4
     tile_size = canvas_size // dim
     im = Image.new(mode="RGB", size=(canvas_size, canvas_size))
@@ -40,19 +38,16 @@ def make_image_from_state(board, final=False):
                     color = (0, 230, 0)
             draw.rectangle([cur_x, cur_y, cur_x+tile_size,
                            cur_y+tile_size], fill=color)
-    ending = str(round_).rjust(4, "0")
+    ending = str(state_number).rjust(4, "0")
     im.save(f"{output_dir}/frame{ending}.png", "PNG")
-
-# make_image_from_state(board)
-# exit()
 
 
 def show_board(board, fix=False, newest_y=None, newest_x=None):
-    global round_
+    global state_number
     # print(, flush=True)
     ret = []
     sep = "\n" * 15
-    for y, line in enumerate(board):
+    for line in board:
         to_show = "".join(line).replace("@" if fix else "((((", OPEN)
         ret.append(to_show + "\n")
 
@@ -72,28 +67,25 @@ def clean_board(board):
 # show_board(board)
 # adj = list(it.pairwise([1, 0, -1, 0, 1]))
 adj = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-seen = set()
+dfs_seen = set()
 
 
-def dfs(y, x):
-    global round_
+def dfs(board, y, x):
+    global state_number, show_printout
     if board[y][x] != OPEN:
         return
-    if (y, x) in seen:
+    if (y, x) in dfs_seen:
         return
-    seen.add((y, x))
-    # print(y, x)
+    dfs_seen.add((y, x))
     new_adj = adj.copy()
     # random.shuffle(new_adj)
     for i in range(x % 4 + random.randint(0, 3)):
         new_adj.insert(0, new_adj.pop())
     board[y][x] = "@"
-    # wall_mode = False
     total_placed = 0
 
     reviewed = set()
     for dy, dx in new_adj:
-        # print(dy, dx)
         new_y = dy + y
         new_x = dx + x
         reviewed.add((new_y, new_x))
@@ -101,9 +93,9 @@ def dfs(y, x):
             temp = board[new_y][new_x]
             # board[new_y][new_x] = FAIL + "P" + '\033[0m'
             board[new_y][new_x] = "?"
-            round_ += 1
-            if round_ % 100 == 0:
-                print(round_)
+            state_number += 1
+            if state_number % 100 == 0:
+                print(state_number)
 
             if show_printout:
                 # os.system("cls")
@@ -115,11 +107,7 @@ def dfs(y, x):
             total_placed += 1
 
             board[y][x] = "@"
-            dfs(new_y, new_x)
-    # temp = board[y][x]
-    # board[y][x] = "?"
-    # make_image_from_state(board)
-    # board[y][x] = temp
+            dfs(board, new_y, new_x)
 
     assert len(reviewed) == 4
     if total_placed == 0 and (x % 2 == 1 or y % 2 == 1):
@@ -135,7 +123,7 @@ def place_walls(board):
     board[start_y][start_x] = OPEN
 
 
-def bfs():
+def bfs(board):
     fringe = deque([((start_y, start_x), 0)])
     seen = OrderedDict()
     turn = 0
@@ -172,6 +160,7 @@ def make_gif():
 
 
 def initialize_board():
+    global dim, show_printout
     # random.seed(5648)
     sys.setrecursionlimit(5000)
     random.seed(5)
@@ -179,11 +168,6 @@ def initialize_board():
     dim = int(
         sys.argv[-1]) if len(sys.argv) > 1 and sys.argv[-1].isnumeric() else dim
     show_printout = len(sys.argv) > 1 and "show" in sys.argv[1]
-    # print(show_printout)
-    output_dir = "./images"
-    if os.path.exists(output_dir) and os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
-    os.mkdir(output_dir)
 
     board = [list(OPEN*dim) for _ in range(dim)]
     for y in range(dim):
@@ -192,20 +176,28 @@ def initialize_board():
                 board[y][x] = '#'
     return board
 
-def set_start_and_end_positions(board):
+def reveal_start_and_end_positions(board):
     global start_x, start_y
     board[start_y][start_x] = "P"
-    last_y, last_x = bfs()
+    last_y, last_x = bfs(board)
     board[last_y][last_x] = "G"
 
+def output_setup(output_directory="./images"):
+    global output_dir
+    output_dir = output_directory
+    if os.path.exists(output_dir) and os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
+    os.mkdir(output_dir)
 
 def main():
-    global round_, start_x, start_y 
-    round_ = 0
+    global state_number, start_x, start_y
+    start_x, start_y = (1, 0)
+    state_number = 0
     board = initialize_board()
-    dfs(start_y, start_x)
+    output_setup()
+    dfs(board, start_y, start_x)
     clean_board(board)
-    set_start_and_end_positions(board)
+    reveal_start_and_end_positions(board)
     show_board(board, True)
     make_image_from_state(board, True)
     make_gif()
