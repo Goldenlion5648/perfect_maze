@@ -7,11 +7,14 @@ import imageio.v2 as iio
 import time
 import shutil
 from PIL import Image, ImageDraw
+import argparse
 
 OKGREEN = '\033[92m'
 FAIL = '\033[91m'
 OPEN = "."
 WALL = "#"
+adj = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+dfs_seen = set()
 
 
 def make_image_from_state(board, final=False):
@@ -60,15 +63,6 @@ def clean_board(board):
     for y in range(dim):
         board[y] = [WALL if x == WALL else OPEN for x in board[y]]
 
-    # print("cleaned")
-    # show_board(board)
-
-
-# show_board(board)
-# adj = list(it.pairwise([1, 0, -1, 0, 1]))
-adj = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-dfs_seen = set()
-
 
 def dfs(board, y, x):
     global state_number, show_printout
@@ -78,8 +72,7 @@ def dfs(board, y, x):
         return
     dfs_seen.add((y, x))
     new_adj = adj.copy()
-    # random.shuffle(new_adj)
-    for i in range(x % 4 + random.randint(0, 3)):
+    for _ in range(x % 4 + random.randint(0, 3)):
         new_adj.insert(0, new_adj.pop())
     board[y][x] = "@"
     total_placed = 0
@@ -89,17 +82,21 @@ def dfs(board, y, x):
         new_y = dy + y
         new_x = dx + x
         reviewed.add((new_y, new_x))
-        if new_y in range(dim) and new_x in range(dim) and board[new_y][new_x] == OPEN:
+        if new_y in range(dim) and new_x in range(dim):
+            if board[new_y][new_x] != OPEN:
+                continue
+            if new_y % 2 == 0 and new_x % 2 == 0:
+                board[new_y][new_x] = WALL
+                make_image_from_state(board)
+                continue
+
             temp = board[new_y][new_x]
-            # board[new_y][new_x] = FAIL + "P" + '\033[0m'
             board[new_y][new_x] = "?"
             state_number += 1
             if state_number % 100 == 0:
                 print(state_number)
 
             if show_printout:
-                # os.system("cls")
-                # time.sleep(.1)
                 show_board(board, True, new_y)
             make_image_from_state(board)
             board[new_y][new_x] = temp
@@ -144,7 +141,6 @@ def bfs(board):
     return ret
 
 
-# adj8 = [(y, x) for y in range(-1, 2) for x in range(-1, 2) if not (x == 0 and y == 0)]
 def count_branches(board):
     return sum(board[y][x] == OPEN and sum(board[y + dy][x + dx] == OPEN for dy, dx in adj) >= 3 for y, x in it.product(range(1, dim - 1), range(1, dim - 1)))
 
@@ -153,28 +149,16 @@ def make_gif():
     global output_dir
     images = [iio.imread(f"{output_dir}/{x}")
               for x in sorted(os.listdir(output_dir)) if "frame" in x]
-    images.extend(images[-1] for _ in range(20))
+    images.extend(images[-1] for _ in range(100))
     final_gif = "combined.gif"
     iio.mimsave(final_gif, images, format="GIF", duration=.001)
-    # pygifsicle.optimize(final_gif)
 
 
 def initialize_board():
     global dim, show_printout
-    # random.seed(5648)
     sys.setrecursionlimit(5000)
-    random.seed(5)
-    dim = 11
-    dim = int(
-        sys.argv[-1]) if len(sys.argv) > 1 and sys.argv[-1].isnumeric() else dim
-    show_printout = len(sys.argv) > 1 and "show" in sys.argv[1]
-
-    board = [list(OPEN*dim) for _ in range(dim)]
-    for y in range(dim):
-        for x in range(dim):
-            if x % 2 == 0 and y % 2 == 0:
-                board[y][x] = '#'
-    return board
+    # random.seed(5)
+    return [list(OPEN*dim) for _ in range(dim)]
 
 def reveal_start_and_end_positions(board):
     global start_x, start_y
@@ -190,9 +174,16 @@ def output_setup(output_directory="./images"):
     os.mkdir(output_dir)
 
 def main():
-    global state_number, start_x, start_y
+    global state_number, start_x, start_y, dim, show_printout
+
+    
     start_x, start_y = (1, 0)
     state_number = 0
+    dim = 21
+    dim = int(
+        sys.argv[-1]) if len(sys.argv) > 1 and sys.argv[-1].isnumeric() else dim
+    show_printout = len(sys.argv) > 1 and "show" in sys.argv[1]
+
     board = initialize_board()
     output_setup()
     dfs(board, start_y, start_x)
