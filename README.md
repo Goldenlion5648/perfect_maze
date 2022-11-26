@@ -2,7 +2,6 @@
 
 This program generates a perfect maze (a maze each point has exactly one path to it).
 
-# Preview
 As an added bonus, a gif is generated showing the process that was taken to generate the maze. The red dot at the end of the gif is the goal point of the maze. It is the farthest point from the start.
 
 <img src="example.gif" width="400" height="400">
