@@ -15,13 +15,19 @@ For fun, here is a 61 by 61 maze
 This program was made for python 3.10 or later.
 
 ```
+usage: maze_pretty.py [-h] [-d DIM] [-y Y_DIM] [-p] [-o OUTPUT] [-n]
+
 Generates a perfect maze
 
 options:
-  -h, --help         show this help message and exit
-  -d DIM, --dim DIM  The maze generated will be of size DIM by DIM
-  -p, --print        Print every step of the generation to the console
-  -n, --noGif        Should the gif be left out? (The final result will only be printed to the console)
+  -h, --help            show this help message and exit
+  -d DIM, --dim DIM     The maze generated will be of size DIM by DIM (both should be odd)
+  -y Y_DIM, --y_dim Y_DIM
+                        Overrides the y dimension with this value
+  -p, --print           Print every step of the generation to the console
+  -o OUTPUT, --output OUTPUT
+                        File name for the final gif
+  -n, --noGif           Should the gif be left out? (The final result will only be printed to the console)
 ```
 
 Seeing as the gif generated can be quite large, if you are on Linux and have `gifsicle` installed, you can use this command to optimize the gif:
